@@ -131,6 +131,94 @@ image: ghcr.io/dunde-o/immich-machine-learning:custom-v1.XX.Y-cuda
 
 Keep `.env`, database paths, upload paths, and secrets out of git.
 
+## Remote App Host
+
+For a second server that should run the Immich app containers while using the
+NAS Postgres, Redis, and library storage, use the remote app wrapper:
+
+```bash
+scripts/immich-remote-app.sh up
+```
+
+The script reads `docker/.env`, mounts the NAS library into `UPLOAD_LOCATION`,
+checks the Immich storage marker files, pulls the configured images, and starts
+`docker/remote-app.compose.yml`. The remote app starts three containers on this
+server: API/UI, internal worker, and machine-learning.
+
+Current remote app images for this branch:
+
+```text
+ghcr.io/dunde-o/immich-server:v2.7.5-custom.2
+ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.2
+```
+
+The `immich-server` image is used twice by compose:
+
+- `immich_remote_server`: API/UI only, with `IMMICH_WORKERS_INCLUDE=api`.
+- `immich_remote_worker_internal`: background jobs only, with
+  `IMMICH_WORKERS_EXCLUDE=api`.
+
+The machine-learning image is currently a tag-aligned copy of the upstream
+`immich-machine-learning:v2.7.5` image. It is published under the fork namespace
+so the server and machine-learning tags move together in deployment files.
+
+Required values in `docker/.env`:
+
+```env
+UPLOAD_LOCATION=/path/on/this-server/immich/library
+IMMICH_REMOTE_SERVER_IMAGE=ghcr.io/dunde-o/immich-server:v2.7.5-custom.2
+IMMICH_REMOTE_ML_IMAGE=ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.2
+IMMICH_REMOTE_LIBRARY_MOUNT_MODE=nfs
+IMMICH_REMOTE_LIBRARY_MOUNT_REMOTE=<nas-host>:<nas-library-path>
+IMMICH_REMOTE_LIBRARY_MOUNT_OPTIONS=vers=4.1
+DB_HOSTNAME=<nas-db-host>
+DB_PORT=5432
+REDIS_HOSTNAME=<nas-redis-host>
+REDIS_PORT=6379
+```
+
+The remote app compose intentionally does not start Postgres or Redis. It must
+connect to the NAS instances and must see the same library files through the
+mounted `UPLOAD_LOCATION`.
+
+On the NAS, keep only the shared backing services running:
+
+- Postgres
+- Redis
+- the exported Immich library storage
+
+If the goal is to make this remote app host perform the work, stop the NAS
+application workers while the remote app is active:
+
+- stop the NAS `immich-server` container if this host should serve the UI/API;
+- stop any NAS `immich-worker-internal` container;
+- stop the NAS `immich-machine-learning` container.
+
+If the NAS `immich-server` remains running with workers enabled, it can consume
+jobs from the same Redis queue. Use an API-only NAS server configuration only
+when the NAS must keep serving the UI while this host performs background jobs.
+
+Useful commands:
+
+```bash
+scripts/immich-remote-app.sh config
+scripts/immich-remote-app.sh ps
+scripts/immich-remote-app.sh logs
+scripts/immich-remote-app.sh down
+scripts/immich-remote-app.sh umount-library
+```
+
+`up` runs `mount-library`, `check-library`, `pull`, then `docker compose up -d`.
+`down` runs the reverse cleanup path: `docker compose down`, removes the
+configured remote app images from this server, then unmounts the library.
+After setting the NAS database password in `docker/.env`, the file can be made
+read-only to avoid accidental rewrites:
+
+```bash
+scripts/immich-remote-app.sh lock-env
+scripts/immich-remote-app.sh unlock-env
+```
+
 ## Staging Gate
 
 Run every custom image in staging before production. Staging should use a copy of

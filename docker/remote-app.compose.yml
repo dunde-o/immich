@@ -1,0 +1,56 @@
+name: immich-remote-app
+
+services:
+  immich-server:
+    container_name: immich_remote_server
+    image: ${IMMICH_REMOTE_SERVER_IMAGE}
+    env_file:
+      - .env
+    environment:
+      IMMICH_MACHINE_LEARNING_URL: ${IMMICH_MACHINE_LEARNING_URL:-http://immich-machine-learning:3003}
+      IMMICH_WORKERS_INCLUDE: api
+    volumes:
+      - type: bind
+        source: ${UPLOAD_LOCATION}
+        target: /data
+        bind:
+          create_host_path: false
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - '${IMMICH_REMOTE_HTTP_PORT:-2283}:2283'
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+  immich-worker-internal:
+    container_name: immich_remote_worker_internal
+    image: ${IMMICH_REMOTE_SERVER_IMAGE}
+    env_file:
+      - .env
+    environment:
+      IMMICH_MACHINE_LEARNING_URL: ${IMMICH_MACHINE_LEARNING_URL:-http://immich-machine-learning:3003}
+      IMMICH_WORKERS_EXCLUDE: api
+    volumes:
+      - type: bind
+        source: ${UPLOAD_LOCATION}
+        target: /data
+        bind:
+          create_host_path: false
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+  immich-machine-learning:
+    container_name: immich_remote_machine_learning
+    image: ${IMMICH_REMOTE_ML_IMAGE}
+    env_file:
+      - .env
+    volumes:
+      - model-cache:/cache
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+volumes:
+  model-cache:

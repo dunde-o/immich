@@ -18,6 +18,10 @@ changes isolated, reviewable, and rollback-friendly.
   broad refactors.
 - Do not commit secrets, `.env` files, database dumps, media backups, build
   outputs, container layers, or local machine state.
+- When implementation, deployment, Docker, script, environment, or operational
+  behavior changes, update the relevant documentation in the same work item.
+  Start from `README.custom-docker-workflow.md` for this repository's custom
+  Docker and deployment workflow.
 
 ## Security And Environment Rules
 
