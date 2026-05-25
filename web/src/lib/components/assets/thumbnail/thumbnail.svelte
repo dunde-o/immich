@@ -1,3 +1,7 @@
+<script lang="ts" module>
+  const assetDescriptionCache = new Map<string, string | null>();
+</script>
+
 <script lang="ts">
   import { thumbhash } from '$lib/actions/thumbhash';
   import { ProjectionType } from '$lib/constants';
@@ -11,7 +15,7 @@
   import { currentUrlReplaceAssetId } from '$lib/utils/navigation';
   import { getAltText } from '$lib/utils/thumbnail-util';
   import { TUNABLES } from '$lib/utils/tunables';
-  import { AssetMediaSize, AssetVisibility, type UserResponseDto } from '@immich/sdk';
+  import { AssetMediaSize, AssetVisibility, getAssetInfo, type UserResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import {
     mdiArchiveArrowDownOutline,
@@ -84,11 +88,77 @@
   let mouseOver = $state(false);
   let loaded = $state(false);
   let thumbError = $state(false);
+  let description = $state<string | null>(null);
+  let descriptionFetchId = 0;
+  let descriptionTooltipLeft = $state(0);
+  let descriptionTooltipTop = $state(0);
+  let descriptionTooltipTailLeft = $state(0);
+  let descriptionTooltipPlacement = $state<'above' | 'below'>('above');
+  let descriptionTooltipElement: HTMLElement | undefined = $state();
 
   let width = $derived(thumbnailSize || thumbnailWidth || 235);
   let height = $derived(thumbnailSize || thumbnailHeight || 235);
 
   let assetOwner = $derived(albumUsers?.find((user) => user.id === asset.ownerId) ?? null);
+  let showDescriptionTooltip = $derived(!usingMobileDevice && mouseOver && !!description);
+
+  const updateDescriptionTooltipPosition = () => {
+    if (!element) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const bubbleWidth = descriptionTooltipElement?.offsetWidth ?? 280;
+    const viewportPadding = 12;
+    const anchorX = rect.left + rect.width / 2;
+    const left = Math.min(
+      Math.max(anchorX - bubbleWidth / 2, viewportPadding),
+      window.innerWidth - bubbleWidth - viewportPadding,
+    );
+    const hasRoomAbove = rect.top > 100;
+
+    descriptionTooltipLeft = left;
+    descriptionTooltipTop = hasRoomAbove ? rect.top - 12 : rect.top + 12;
+    descriptionTooltipTailLeft = anchorX - left;
+    descriptionTooltipPlacement = hasRoomAbove ? 'above' : 'below';
+  };
+
+  const portalToBody = (node: HTMLElement) => {
+    document.body.appendChild(node);
+
+    return {
+      destroy: () => node.remove(),
+    };
+  };
+
+  const loadDescription = async () => {
+    const assetId = asset.id;
+    const cachedDescription = assetDescriptionCache.get(assetId);
+
+    if (assetDescriptionCache.has(assetId)) {
+      description = cachedDescription ?? null;
+      return;
+    }
+
+    const fetchId = ++descriptionFetchId;
+
+    try {
+      const assetInfo = await getAssetInfo({ ...authManager.params, id: assetId });
+      const nextDescription = assetInfo.exifInfo?.description?.trim() || null;
+      assetDescriptionCache.set(assetId, nextDescription);
+
+      if (fetchId === descriptionFetchId && mouseOver && asset.id === assetId) {
+        description = nextDescription;
+        requestAnimationFrame(updateDescriptionTooltipPosition);
+      }
+    } catch {
+      assetDescriptionCache.set(assetId, null);
+
+      if (fetchId === descriptionFetchId && asset.id === assetId) {
+        description = null;
+      }
+    }
+  };
 
   const onIconClickedHandler = (e?: MouseEvent) => {
     e?.stopPropagation();
@@ -122,6 +192,8 @@
       return;
     }
     mouseOver = true;
+    updateDescriptionTooltipPosition();
+    void loadDescription();
     onMouseEvent?.({ isMouseOver: true, selectedGroupIndex: groupIndex });
   };
 
@@ -187,6 +259,20 @@
       clearLongPressTimer();
     }
   }
+  $effect(() => {
+    asset.id;
+    descriptionFetchId += 1;
+    description = assetDescriptionCache.get(asset.id) ?? null;
+  });
+
+  $effect(() => {
+    if (!showDescriptionTooltip || !descriptionTooltipElement) {
+      return;
+    }
+
+    requestAnimationFrame(updateDescriptionTooltipPosition);
+  });
+
   onMount(() => {
     document.addEventListener('scroll', clearLongPressTimer, { capture: true, passive: true });
     document.addEventListener('wheel', clearLongPressTimer, { capture: true, passive: true });
@@ -219,6 +305,7 @@
   style:width="{width}px"
   style:height="{height}px"
   onmouseenter={onMouseEnter}
+  onmousemove={showDescriptionTooltip ? updateDescriptionTooltipPosition : undefined}
   onmouseleave={onMouseLeave}
   use:longPress={{ onLongPress: () => onSelect?.($state.snapshot(asset)) }}
   onkeydown={(evt) => {
@@ -473,3 +560,33 @@
     ></div>
   </div>
 </div>
+
+{#if showDescriptionTooltip && description}
+  <div
+    class={[
+      'pointer-events-none fixed z-50 w-max max-w-[280px] rounded-xl bg-black/90 px-3.5 py-2.5 text-xs leading-relaxed text-white shadow-xl backdrop-blur-sm',
+      descriptionTooltipPlacement === 'above' ? '-translate-y-full' : '',
+    ]}
+    bind:this={descriptionTooltipElement}
+    use:portalToBody
+    style:left="{descriptionTooltipLeft}px"
+    style:top="{descriptionTooltipTop}px"
+    style:--tail-left="{descriptionTooltipTailLeft}px"
+    in:fade={{ duration: 300 }}
+    out:fade={{ duration: 300 }}
+  >
+    <p class="line-clamp-4 whitespace-pre-line break-words">{description}</p>
+    <div
+      class={[
+        'description-tooltip-tail absolute size-3 rotate-45 bg-black/90',
+        descriptionTooltipPlacement === 'above' ? 'top-full -mt-1.5' : 'bottom-full -mb-1.5',
+      ]}
+    ></div>
+  </div>
+{/if}
+
+<style>
+  .description-tooltip-tail {
+    left: calc(var(--tail-left) - 6px);
+  }
+</style>

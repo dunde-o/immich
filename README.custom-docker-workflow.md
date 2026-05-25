@@ -148,9 +148,19 @@ server: API/UI, internal worker, and machine-learning.
 Current remote app images for this branch:
 
 ```text
-ghcr.io/dunde-o/immich-server:v2.7.5-custom.3
-ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.3
+ghcr.io/dunde-o/immich-server:v2.7.5-custom.4
+ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.4
 ```
+
+Current custom UI behavior in `v2.7.5-custom.4`:
+
+- stack thumbnails stay in the bottom viewer strip without covering the detail
+  panel;
+- stack thumbnail order stays chronological even when a primary asset is set;
+- stack strip wheel input scrolls horizontally, and PageUp/PageDown move within
+  the stack;
+- timeline thumbnails with a description show a short hover tooltip at the
+  thumbnail top edge, with the tooltip tail anchored to the thumbnail.
 
 The `immich-server` image is used twice by compose:
 
@@ -167,8 +177,8 @@ Required values in `docker/.env`:
 ```env
 UPLOAD_LOCATION=/path/on/this-server/immich/library
 DB_DATA_LOCATION=/path/on/this-server/immich/postgres
-IMMICH_REMOTE_SERVER_IMAGE=ghcr.io/dunde-o/immich-server:v2.7.5-custom.3
-IMMICH_REMOTE_ML_IMAGE=ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.3
+IMMICH_REMOTE_SERVER_IMAGE=ghcr.io/dunde-o/immich-server:v2.7.5-custom.4
+IMMICH_REMOTE_ML_IMAGE=ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.4
 IMMICH_REMOTE_LIBRARY_MOUNT_MODE=nfs
 IMMICH_REMOTE_LIBRARY_MOUNT_REMOTE=<nas-host>:<nas-library-path>
 IMMICH_REMOTE_LIBRARY_MOUNT_OPTIONS=vers=4.1
