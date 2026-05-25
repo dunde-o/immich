@@ -111,6 +111,24 @@ describe(StackService.name, () => {
       expect(mocks.access.stack.checkOwnerAccess).toHaveBeenCalled();
       expect(mocks.stack.getById).toHaveBeenCalledWith(stack.id);
     });
+
+    it('should keep stack assets in repository order when the primary asset is not first', async () => {
+      const auth = AuthFactory.create();
+      const [asset, primaryAsset] = [AssetFactory.from().exif().build(), AssetFactory.from().exif().build()];
+      const stack = StackFactory.from()
+        .asset(asset, (builder) => builder.exif())
+        .primaryAsset(primaryAsset, (builder) => builder.exif())
+        .build();
+
+      mocks.access.stack.checkOwnerAccess.mockResolvedValue(new Set([stack.id]));
+      mocks.stack.getById.mockResolvedValue(getForStack(stack));
+
+      await expect(sut.get(auth, stack.id)).resolves.toEqual({
+        id: stack.id,
+        primaryAssetId: primaryAsset.id,
+        assets: [expect.objectContaining({ id: asset.id }), expect.objectContaining({ id: primaryAsset.id })],
+      });
+    });
   });
 
   describe('update', () => {

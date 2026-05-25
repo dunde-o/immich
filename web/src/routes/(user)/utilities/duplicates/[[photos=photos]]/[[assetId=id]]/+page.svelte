@@ -10,6 +10,7 @@
   import ShortcutsModal from '$lib/modals/ShortcutsModal.svelte';
   import { Route } from '$lib/route';
   import { locale } from '$lib/stores/preferences.store';
+  import { sortStackAssetsByTime } from '$lib/utils/asset-utils';
   import { handleError } from '$lib/utils/handle-error';
   import type { AssetResponseDto } from '@immich/sdk';
   import { createStack, deleteDuplicates, resolveDuplicates, updateAssets } from '@immich/sdk';
@@ -124,7 +125,7 @@
   };
 
   const handleStack = async (duplicateId: string, assets: AssetResponseDto[]) => {
-    const assetIds = assets.map((asset) => asset.id);
+    const assetIds = sortStackAssetsByTime(assets).map((asset) => asset.id);
     await createStack({ stackCreateDto: { assetIds } });
     await updateAssets({ assetBulkUpdateDto: { ids: assetIds, duplicateId: null } });
     duplicates = duplicates.filter((duplicate) => duplicate.duplicateId !== duplicateId);

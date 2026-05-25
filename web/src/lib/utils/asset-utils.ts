@@ -315,15 +315,71 @@ export type StackResponse = {
   toDeleteIds: string[];
 };
 
-export const stackAssets = async (assets: { id: string }[], showNotification = true): Promise<StackResponse> => {
+type StackableAssetDateTime =
+  | string
+  | {
+      year?: number;
+      month?: number;
+      day?: number;
+      hour?: number;
+      minute?: number;
+      second?: number;
+      millisecond?: number;
+    };
+
+type StackableAsset = {
+  id: string;
+  localDateTime?: StackableAssetDateTime;
+  fileCreatedAt?: StackableAssetDateTime;
+};
+
+const getStackAssetTime = (value: StackableAssetDateTime | undefined) => {
+  if (!value) {
+    return 0;
+  }
+
+  if (typeof value === 'string') {
+    const time = DateTime.fromISO(value).toMillis();
+    return Number.isNaN(time) ? 0 : time;
+  }
+
+  return Date.UTC(
+    value.year ?? 0,
+    (value.month ?? 1) - 1,
+    value.day ?? 1,
+    value.hour ?? 0,
+    value.minute ?? 0,
+    value.second ?? 0,
+    value.millisecond ?? 0,
+  );
+};
+
+export const sortStackAssetsByTime = <T extends StackableAsset>(assets: T[]) => {
+  return [...assets].sort((a, b) => {
+    const localDiff = getStackAssetTime(a.localDateTime) - getStackAssetTime(b.localDateTime);
+    if (localDiff !== 0) {
+      return localDiff;
+    }
+
+    const createdDiff = getStackAssetTime(a.fileCreatedAt) - getStackAssetTime(b.fileCreatedAt);
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+};
+
+export const stackAssets = async (assets: StackableAsset[], showNotification = true): Promise<StackResponse> => {
   if (assets.length < 2) {
     return { stack: undefined, toDeleteIds: [] };
   }
 
   const $t = get(t);
+  const sortedAssets = sortStackAssetsByTime(assets);
 
   try {
-    const stack = await createStack({ stackCreateDto: { assetIds: assets.map(({ id }) => id) } });
+    const stack = await createStack({ stackCreateDto: { assetIds: sortedAssets.map(({ id }) => id) } });
     if (showNotification) {
       toastManager.primary({
         description: $t('stacked_assets_count', { values: { count: stack.assets.length } }),
@@ -336,7 +392,7 @@ export const stackAssets = async (assets: { id: string }[], showNotification = t
 
     return {
       stack,
-      toDeleteIds: assets.slice(1).map((asset) => asset.id),
+      toDeleteIds: sortedAssets.slice(1).map((asset) => asset.id),
     };
   } catch (error) {
     handleError(error, $t('errors.failed_to_stack_assets'));

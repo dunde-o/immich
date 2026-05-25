@@ -1,5 +1,5 @@
 import type { AssetResponseDto } from '@immich/sdk';
-import { canCopyImageToClipboard, getAssetFilename, getFilenameExtension } from './asset-utils';
+import { canCopyImageToClipboard, getAssetFilename, getFilenameExtension, sortStackAssetsByTime } from './asset-utils';
 
 describe('get file extension from filename', () => {
   it('returns the extension without including the dot', () => {
@@ -61,5 +61,26 @@ describe('copy image to clipboard', () => {
   // This test is dubious, as it totally on the environment where the test is run which is mocked.
   it('should allow copy image to clipboard', () => {
     expect(canCopyImageToClipboard()).toEqual(true);
+  });
+});
+
+describe('sort stack assets by time', () => {
+  it('sorts assets by local date time before stacking', () => {
+    const sorted = sortStackAssetsByTime([
+      { id: 'c', localDateTime: '2026-01-01T10:00:02.000Z' },
+      { id: 'a', localDateTime: '2026-01-01T10:00:00.000Z' },
+      { id: 'b', localDateTime: '2026-01-01T10:00:01.000Z' },
+    ]);
+
+    expect(sorted.map((asset) => asset.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('uses id as a stable tie breaker for assets with the same time', () => {
+    const sorted = sortStackAssetsByTime([
+      { id: 'b', localDateTime: '2026-01-01T10:00:00.000Z' },
+      { id: 'a', localDateTime: '2026-01-01T10:00:00.000Z' },
+    ]);
+
+    expect(sorted.map((asset) => asset.id)).toEqual(['a', 'b']);
   });
 });

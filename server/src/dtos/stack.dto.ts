@@ -31,12 +31,9 @@ export class StackResponseDto {
 }
 
 export const mapStack = (stack: Stack, { auth }: { auth?: AuthDto }) => {
-  const primary = stack.assets.filter((asset) => asset.id === stack.primaryAssetId);
-  const others = stack.assets.filter((asset) => asset.id !== stack.primaryAssetId);
-
   return {
     id: stack.id,
     primaryAssetId: stack.primaryAssetId,
-    assets: [...primary, ...others].map((asset) => mapAsset(asset, { auth })),
+    assets: stack.assets.map((asset) => mapAsset(asset, { auth })),
   };
 };
