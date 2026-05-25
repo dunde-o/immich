@@ -428,6 +428,18 @@
       !assetViewerManager.isShowEditor,
   );
   const useTopChromeRow = $derived($slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor);
+  const hasStackStrip = $derived(!!stack && withStacked && !assetViewerManager.isShowEditor);
+  const stackStripRightOffset = $derived.by(() => {
+    if (showDetailPanel) {
+      return '22.5rem';
+    }
+
+    if (isShared && album && assetViewerManager.isShowActivityPanel && $user) {
+      return '22.5rem';
+    }
+
+    return '0px';
+  });
 
   const onSwipe = (event: SwipeCustomEvent) => {
     if (assetViewerManager.zoom > 1) {
@@ -507,6 +519,7 @@
       'z-[-1] relative col-start-1 col-span-4 row-end-3 min-h-0',
       useTopChromeRow ? 'row-start-2' : 'row-start-1',
     ]}
+    style:padding-bottom={hasStackStrip ? '6rem' : '0px'}
   >
     {#if viewerKind === 'StackVideoViewer'}
       <VideoViewer
@@ -601,10 +614,11 @@
     {@const stackedAssets = stack.assets}
     <div
       id="stack-slideshow"
-      class="z-10 col-span-4 col-start-1 row-start-3 self-end border-t border-white/10 bg-black"
+      class="fixed bottom-0 start-0 z-20 border-t border-white/10 bg-black"
+      style:right={stackStripRightOffset}
     >
       <div
-        class="flex w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden horizontal-scrollbar px-4 pt-2"
+        class="flex min-h-24 w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden horizontal-scrollbar px-4 pt-4"
       >
         {#each stackedAssets as stackedAsset (stackedAsset.id)}
           <div
