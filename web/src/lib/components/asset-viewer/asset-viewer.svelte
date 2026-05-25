@@ -456,6 +456,7 @@
 <section
   id="immich-asset-viewer"
   class="fixed start-0 top-0 grid size-full grid-cols-4 overflow-hidden bg-black"
+  style="grid-template-rows: 64px minmax(0, 1fr) auto;"
   use:focusTrap
   bind:this={assetViewerHtmlElement}
 >
@@ -502,9 +503,10 @@
   <!-- Asset Viewer -->
   <div
     data-viewer-content
-    class="z-[-1] relative min-h-0"
-    style:grid-column="1 / 5"
-    style:grid-row={useTopChromeRow ? '2 / 3' : '1 / 3'}
+    class={[
+      'z-[-1] relative col-start-1 col-span-4 row-end-3 min-h-0',
+      useTopChromeRow ? 'row-start-2' : 'row-start-1',
+    ]}
   >
     {#if viewerKind === 'StackVideoViewer'}
       <VideoViewer
@@ -599,9 +601,7 @@
     {@const stackedAssets = stack.assets}
     <div
       id="stack-slideshow"
-      class="z-10 border-t border-white/10 bg-black"
-      style:grid-column="1 / 5"
-      style:grid-row="3 / 4"
+      class="z-10 col-span-4 col-start-1 row-start-3 self-end border-t border-white/10 bg-black"
     >
       <div
         class="flex w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden horizontal-scrollbar px-4 pt-2"
@@ -661,7 +661,6 @@
 <style>
   #immich-asset-viewer {
     contain: layout;
-    grid-template-rows: 64px minmax(0, 1fr) auto;
   }
 
   .horizontal-scrollbar::-webkit-scrollbar {

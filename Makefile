@@ -1,13 +1,17 @@
 dev:
+	@scripts/immich-remote-app.sh check-library
 	@trap 'make dev-down' EXIT; COMPOSE_BAKE=true docker compose -f ./docker/docker-compose.dev.yml up --remove-orphans
 
 dev-down:
 	docker compose -f ./docker/docker-compose.dev.yml down --remove-orphans
+	scripts/immich-remote-app.sh umount-library
 
 dev-update:
+	@scripts/immich-remote-app.sh check-library
 	@trap 'make dev-down' EXIT; COMPOSE_BAKE=true docker compose -f ./docker/docker-compose.dev.yml up --build -V --remove-orphans
 
 dev-scale:
+	@scripts/immich-remote-app.sh check-library
 	@trap 'make dev-down' EXIT; COMPOSE_BAKE=true docker compose -f ./docker/docker-compose.dev.yml up --build -V --scale immich-server=3 --remove-orphans
 
 dev-docs:

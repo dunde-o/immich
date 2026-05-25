@@ -166,6 +166,7 @@ Required values in `docker/.env`:
 
 ```env
 UPLOAD_LOCATION=/path/on/this-server/immich/library
+DB_DATA_LOCATION=/path/on/this-server/immich/postgres
 IMMICH_REMOTE_SERVER_IMAGE=ghcr.io/dunde-o/immich-server:v2.7.5-custom.3
 IMMICH_REMOTE_ML_IMAGE=ghcr.io/dunde-o/immich-machine-learning:v2.7.5-custom.3
 IMMICH_REMOTE_LIBRARY_MOUNT_MODE=nfs
@@ -180,6 +181,31 @@ REDIS_PORT=6379
 The remote app compose intentionally does not start Postgres or Redis. It must
 connect to the NAS instances and must see the same library files through the
 mounted `UPLOAD_LOCATION`.
+
+## Development With Mounted Library
+
+`make dev`, `make dev-update`, and `make dev-scale` also use the same library
+mount helper before starting the development compose stack:
+
+```bash
+make dev
+```
+
+The flow is:
+
+1. `scripts/immich-remote-app.sh check-library`
+2. `docker compose -f docker/docker-compose.dev.yml up ...`
+3. on exit, `make dev-down`
+4. `scripts/immich-remote-app.sh umount-library`
+
+For development mode, `UPLOAD_LOCATION` must be the mounted Immich library root
+itself. The dev server mounts that path directly to `/data`, so the library root
+must contain the normal Immich marker files such as `encoded-video/.immich`,
+`thumbs/.immich`, and `upload/.immich`.
+
+Keep `DB_DATA_LOCATION` separate from the mounted media library. The dev compose
+uses it for the local Postgres volume so database files are not written into the
+NAS media library mount.
 
 On the NAS, keep only the shared backing services running:
 

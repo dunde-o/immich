@@ -23,6 +23,18 @@ changes isolated, reviewable, and rollback-friendly.
   Start from `README.custom-docker-workflow.md` for this repository's custom
   Docker and deployment workflow.
 
+## Work Verification Rules
+
+- Do not present guesses as confirmed facts. Verify behavior directly from the
+  running UI, logs, tests, screenshots, or relevant source code before claiming
+  that a change fixed a problem.
+- When direct verification is not possible, clearly tell the user what could not
+  be checked, why it could not be checked, and what assumption is being used
+  before continuing.
+- If a UI issue depends on a specific browser state, route, media item, or
+  deployment image, confirm that the running environment is using the intended
+  commit or image digest before treating the issue as resolved.
+
 ## Security And Environment Rules
 
 - Never commit user personal identifiers, personal information, secrets,
