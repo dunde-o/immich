@@ -286,10 +286,6 @@
     }
   };
 
-  const handleStackedAssetMouseEvent = (isMouseOver: boolean, stackedAsset: AssetResponseDto) => {
-    previewStackedAsset = isMouseOver ? stackedAsset : undefined;
-  };
-
   const handlePreAction = (action: Action) => {
     preAction?.(action);
   };
@@ -458,7 +454,7 @@
 
 <section
   id="immich-asset-viewer"
-  class="fixed start-0 top-0 grid size-full grid-cols-4 grid-rows-[64px_1fr] overflow-hidden bg-black"
+  class="fixed start-0 top-0 grid size-full grid-cols-4 grid-rows-[64px_minmax(0,1fr)_auto] overflow-hidden bg-black"
   use:focusTrap
   bind:this={assetViewerHtmlElement}
 >
@@ -497,13 +493,13 @@
   {/if}
 
   {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !assetViewerManager.isFaceEditMode && previousAsset}
-    <div class="my-auto col-span-1 col-start-1 row-span-full row-start-1 justify-self-start">
+    <div class="my-auto col-span-1 col-start-1 row-start-1 row-end-3 justify-self-start">
       <PreviousAssetAction onPreviousAsset={() => navigateAsset('previous')} />
     </div>
   {/if}
 
   <!-- Asset Viewer -->
-  <div data-viewer-content class="z-[-1] relative col-start-1 col-span-4 row-start-1 row-span-full">
+  <div data-viewer-content class="z-[-1] relative col-start-1 col-span-4 row-start-1 row-end-3 min-h-0">
     {#if viewerKind === 'StackVideoViewer'}
       <VideoViewer
         asset={previewStackedAsset!}
@@ -570,7 +566,7 @@
   </div>
 
   {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !assetViewerManager.isFaceEditMode && nextAsset}
-    <div class="my-auto col-span-1 col-start-4 row-span-full row-start-1 justify-self-end">
+    <div class="my-auto col-span-1 col-start-4 row-start-1 row-end-3 justify-self-end">
       <NextAssetAction onNextAsset={() => navigateAsset('next')} />
     </div>
   {/if}
@@ -595,14 +591,16 @@
 
   {#if stack && withStacked && !assetViewerManager.isShowEditor}
     {@const stackedAssets = stack.assets}
-    <div id="stack-slideshow" class="absolute bottom-0 z-10 w-full col-span-4 col-start-1 pointer-events-none">
+    <div id="stack-slideshow" class="z-10 col-span-4 col-start-1 row-start-3 border-t border-white/10 bg-black">
       <div
-        class="relative flex w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden horizontal-scrollbar pointer-events-auto"
+        class="flex w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden horizontal-scrollbar px-4 pt-2"
       >
         {#each stackedAssets as stackedAsset (stackedAsset.id)}
           <div
-            class={['inline-block shrink-0 px-1 relative transition-all pb-2 pointer-events-auto']}
-            style:bottom={stackedAsset.id === asset.id ? '0' : '-10px'}
+            class={[
+              'inline-block shrink-0 px-1 pb-2 transition-transform duration-150 ease-out',
+              { 'hover:-translate-y-1 hover:scale-105': stackedAsset.id !== asset.id },
+            ]}
           >
             <Thumbnail
               imageClass={{ 'border-2 border-white': stackedAsset.id === asset.id }}
@@ -613,7 +611,6 @@
                 cursor.current = stackedAsset;
                 previewStackedAsset = undefined;
               }}
-              onMouseEvent={({ isMouseOver }) => handleStackedAssetMouseEvent(isMouseOver, stackedAsset)}
               readonly
               thumbnailSize={stackedAsset.id === asset.id ? stackSelectedThumbnailSize : stackThumbnailSize}
               showStackedIcon={false}
