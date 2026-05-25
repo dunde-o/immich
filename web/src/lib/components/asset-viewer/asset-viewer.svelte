@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { focusTrap } from '$lib/actions/focus-trap';
+  import { shortcuts } from '$lib/actions/shortcut';
   import type { Action, OnAction, PreAction } from '$lib/components/asset-viewer/actions/action';
   import NextAssetAction from '$lib/components/asset-viewer/actions/next-asset-action.svelte';
   import PreviousAssetAction from '$lib/components/asset-viewer/actions/previous-asset-action.svelte';
@@ -98,6 +99,7 @@
   } = slideshowStore;
   const stackThumbnailSize = 60;
   const stackSelectedThumbnailSize = 65;
+  const pendingStackDeleteReplacements = new Map<string, AssetResponseDto>();
 
   let previewStackedAsset: AssetResponseDto | undefined = $state();
   let stack: StackResponseDto | null = $state(null);
@@ -190,6 +192,44 @@
       assetViewerManager.setAsset(refreshedAsset);
     }
     assetViewerManager.closeEditor();
+  };
+
+  const isStackDeleteAction = (action: Action) =>
+    action.type === AssetAction.DELETE || action.type === AssetAction.TRASH;
+
+  const getStackAssetIndex = (assetId: string) =>
+    stack?.assets.findIndex((stackAsset) => stackAsset.id === assetId) ?? -1;
+
+  const getStackNavigationTarget = (assetId: string, order: 'previous' | 'next') => {
+    const index = getStackAssetIndex(assetId);
+
+    if (!stack || index === -1) {
+      return;
+    }
+
+    return stack.assets[order === 'previous' ? index - 1 : index + 1];
+  };
+
+  const getStackDeleteReplacement = (assetId: string) => {
+    const index = getStackAssetIndex(assetId);
+
+    if (!stack || index === -1 || stack.assets.length <= 1) {
+      return;
+    }
+
+    return stack.assets[index + 1] ?? stack.assets[index - 1];
+  };
+
+  const navigateStackAsset = (order: 'previous' | 'next') => {
+    const target = getStackNavigationTarget(asset.id, order);
+
+    if (!target) {
+      return false;
+    }
+
+    cursor.current = target;
+    previewStackedAsset = undefined;
+    return true;
   };
 
   const tracker = new InvocationTracker();
@@ -287,6 +327,15 @@
   };
 
   const handlePreAction = (action: Action) => {
+    if (isStackDeleteAction(action)) {
+      const replacement = getStackDeleteReplacement(action.asset.id);
+
+      if (replacement) {
+        pendingStackDeleteReplacements.set(action.asset.id, replacement);
+        return;
+      }
+    }
+
     preAction?.(action);
   };
 
@@ -294,7 +343,21 @@
     switch (action.type) {
       case AssetAction.DELETE:
       case AssetAction.TRASH: {
-        eventManager.emit('AssetsDelete', [asset.id]);
+        const replacement = pendingStackDeleteReplacements.get(action.asset.id);
+
+        if (stack && replacement) {
+          const remainingAssets = stack.assets.filter((stackAsset) => stackAsset.id !== action.asset.id);
+          stack = {
+            ...stack,
+            assets: remainingAssets,
+            primaryAssetId: stack.primaryAssetId === action.asset.id ? replacement.id : stack.primaryAssetId,
+          };
+          cursor.current = replacement;
+          previewStackedAsset = undefined;
+          pendingStackDeleteReplacements.delete(action.asset.id);
+        }
+
+        eventManager.emit('AssetsDelete', [action.asset.id]);
         break;
       }
       case AssetAction.REMOVE_ASSET_FROM_STACK: {
@@ -458,12 +521,38 @@
       navigateAsset('previous');
     }
   };
+
+  const handleStackWheel = (event: WheelEvent) => {
+    const element = event.currentTarget;
+
+    if (!(element instanceof HTMLElement) || element.scrollWidth <= element.clientWidth) {
+      return;
+    }
+
+    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+
+    if (delta === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    element.scrollLeft += delta;
+  };
+
+  const stackShortcutBindings = $derived(
+    hasStackStrip
+      ? [
+          { shortcut: { key: 'PageUp' }, onShortcut: () => navigateStackAsset('previous'), preventDefault: true },
+          { shortcut: { key: 'PageDown' }, onShortcut: () => navigateStackAsset('next'), preventDefault: true },
+        ]
+      : [],
+  );
 </script>
 
 <CommandPaletteDefaultProvider name={$t('assets')} actions={[Tag, TagPeople]} />
 <OnEvents {onAssetUpdate} />
 
-<svelte:document bind:fullscreenElement />
+<svelte:document bind:fullscreenElement use:shortcuts={stackShortcutBindings} />
 
 <section
   id="immich-asset-viewer"
@@ -519,7 +608,7 @@
       'z-[-1] relative col-start-1 col-span-4 row-end-3 min-h-0',
       useTopChromeRow ? 'row-start-2' : 'row-start-1',
     ]}
-    style:padding-bottom={hasStackStrip ? '6rem' : '0px'}
+    style:padding-bottom={hasStackStrip ? '8rem' : '0px'}
   >
     {#if viewerKind === 'StackVideoViewer'}
       <VideoViewer
@@ -614,33 +703,43 @@
     {@const stackedAssets = stack.assets}
     <div
       id="stack-slideshow"
-      class="fixed bottom-0 start-0 z-20 border-t border-white/10 bg-black"
+      class="fixed z-20 border-t border-white/10 bg-black"
+      style:left="0px"
       style:right={stackStripRightOffset}
+      style:bottom="0px"
+      style:top="auto"
+      style:height="7rem"
     >
       <div
-        class="flex min-h-24 w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden horizontal-scrollbar px-4 pt-4"
+        class="flex h-full w-full max-w-full flex-row flex-nowrap items-end overflow-x-auto overflow-y-hidden horizontal-scrollbar px-4 pt-5 pb-3"
+        onwheel={handleStackWheel}
       >
         {#each stackedAssets as stackedAsset (stackedAsset.id)}
+          {@const currentThumbnailSize = stackedAsset.id === asset.id ? stackSelectedThumbnailSize : stackThumbnailSize}
           <div
             class={[
-              'inline-block shrink-0 px-1 pb-2 transition-transform duration-150 ease-out',
+              'relative inline-block shrink-0 px-1 transition-transform duration-150 ease-out',
               { 'hover:-translate-y-1 hover:scale-105': stackedAsset.id !== asset.id },
             ]}
+            style:width="{currentThumbnailSize + 8}px"
+            style:height="{currentThumbnailSize + 14}px"
           >
-            <Thumbnail
-              imageClass={{ 'border-2 border-white': stackedAsset.id === asset.id }}
-              brokenAssetClass="text-xs"
-              dimmed={stackedAsset.id !== asset.id}
-              asset={toTimelineAsset(stackedAsset)}
-              onClick={() => {
-                cursor.current = stackedAsset;
-                previewStackedAsset = undefined;
-              }}
-              readonly
-              thumbnailSize={stackedAsset.id === asset.id ? stackSelectedThumbnailSize : stackThumbnailSize}
-              showStackedIcon={false}
-              disableLinkMouseOver
-            />
+            <div class="relative" style:width="{currentThumbnailSize}px" style:height="{currentThumbnailSize}px">
+              <Thumbnail
+                imageClass={{ 'border-2 border-white': stackedAsset.id === asset.id }}
+                brokenAssetClass="text-xs"
+                dimmed={stackedAsset.id !== asset.id}
+                asset={toTimelineAsset(stackedAsset)}
+                onClick={() => {
+                  cursor.current = stackedAsset;
+                  previewStackedAsset = undefined;
+                }}
+                readonly
+                thumbnailSize={currentThumbnailSize}
+                showStackedIcon={false}
+                disableLinkMouseOver
+              />
+            </div>
 
             {#if stackedAsset.id === asset.id}
               <div class="w-full flex place-items-center place-content-center">
