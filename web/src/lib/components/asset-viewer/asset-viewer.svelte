@@ -427,6 +427,7 @@
       assetViewerManager.isShowDetailPanel &&
       !assetViewerManager.isShowEditor,
   );
+  const useTopChromeRow = $derived($slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor);
 
   const onSwipe = (event: SwipeCustomEvent) => {
     if (assetViewerManager.zoom > 1) {
@@ -493,13 +494,19 @@
   {/if}
 
   {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !assetViewerManager.isFaceEditMode && previousAsset}
-    <div class="my-auto col-span-1 col-start-1 row-start-1 row-end-3 justify-self-start">
+    <div class="my-auto col-span-1 col-start-1 row-start-2 row-end-3 justify-self-start">
       <PreviousAssetAction onPreviousAsset={() => navigateAsset('previous')} />
     </div>
   {/if}
 
   <!-- Asset Viewer -->
-  <div data-viewer-content class="z-[-1] relative col-start-1 col-span-4 row-start-1 row-end-3 min-h-0">
+  <div
+    data-viewer-content
+    class={[
+      'z-[-1] relative col-start-1 col-span-4 row-end-3 min-h-0',
+      useTopChromeRow ? 'row-start-2' : 'row-start-1',
+    ]}
+  >
     {#if viewerKind === 'StackVideoViewer'}
       <VideoViewer
         asset={previewStackedAsset!}
@@ -566,7 +573,7 @@
   </div>
 
   {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !assetViewerManager.isFaceEditMode && nextAsset}
-    <div class="my-auto col-span-1 col-start-4 row-start-1 row-end-3 justify-self-end">
+    <div class="my-auto col-span-1 col-start-4 row-start-2 row-end-3 justify-self-end">
       <NextAssetAction onNextAsset={() => navigateAsset('next')} />
     </div>
   {/if}
