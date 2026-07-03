@@ -41,6 +41,9 @@ const withAssets = (eb: ExpressionBuilder<DB, 'stack'>, withTags = false) => {
       .select((eb) => eb.fn.toJson('exifInfo').as('exifInfo'))
       .where('asset.deletedAt', 'is', null)
       .whereRef('asset.stackId', '=', 'stack.id')
+      .orderBy('asset.localDateTime', 'asc')
+      .orderBy('asset.fileCreatedAt', 'asc')
+      .orderBy('asset.id', 'asc')
       .$call(withDefaultVisibility),
   ).as('assets');
 };
