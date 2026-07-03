@@ -42,7 +42,9 @@ const withAssets = (eb: ExpressionBuilder<DB, 'stack'>, withTags = false) => {
       .where('asset.deletedAt', 'is', null)
       .whereRef('asset.stackId', '=', 'stack.id')
       .$call(withDefaultVisibility)
-      .orderBy('asset.fileCreatedAt', 'asc'),
+      .orderBy('asset.localDateTime', 'asc')
+      .orderBy('asset.fileCreatedAt', 'asc')
+      .orderBy('asset.id', 'asc'),
   ).as('assets');
 };
 
