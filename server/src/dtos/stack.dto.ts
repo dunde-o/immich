@@ -37,12 +37,11 @@ export class StackUpdateDto extends createZodDto(StackUpdateSchema) {}
 export class StackResponseDto extends createZodDto(StackResponseSchema) {}
 
 export const mapStack = (stack: Stack, { auth }: { auth?: AuthDto }) => {
-  const primary = stack.assets.filter((asset) => asset.id === stack.primaryAssetId);
-  const others = stack.assets.filter((asset) => asset.id !== stack.primaryAssetId);
-
   return {
     id: stack.id,
     primaryAssetId: stack.primaryAssetId,
-    assets: [...primary, ...others].map((asset) => mapAsset(asset, { auth })),
+    // 대표이미지를 맨 앞으로 당기지 않고 리포지토리의 시간순(localDateTime) 정렬을 유지한다.
+    // 대표 표시는 프론트엔드 스택 스트립의 별(star) 뱃지로 처리한다.
+    assets: stack.assets.map((asset) => mapAsset(asset, { auth })),
   };
 };
