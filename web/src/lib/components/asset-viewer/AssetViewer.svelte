@@ -690,13 +690,11 @@
 
             {#if stackedAsset.id === stack.primaryAssetId}
               <div
-                class="pointer-events-none absolute left-1.5 top-0.5 rounded-full bg-black/60 p-0.5"
+                class="pointer-events-none absolute top-0.5 left-1.5 rounded-full bg-black/60 p-0.5"
                 title="대표 이미지"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-3.5 fill-yellow-400">
-                  <path
-                    d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
-                  />
+                  <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                 </svg>
               </div>
             {/if}
