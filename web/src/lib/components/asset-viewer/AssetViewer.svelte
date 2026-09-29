@@ -41,6 +41,8 @@
   import { onDestroy, onMount, untrack } from 'svelte';
   import type { SwipeCustomEvent } from 'svelte-gestures';
   import { t } from 'svelte-i18n';
+  import type { Attachment } from 'svelte/attachments';
+  import { on } from 'svelte/events';
   import { fly } from 'svelte/transition';
   import Thumbnail from '../assets/thumbnail/Thumbnail.svelte';
   import ActivityStatus from './ActivityStatus.svelte';
@@ -101,6 +103,22 @@
   } = slideshowStore;
   const stackThumbnailSize = 60;
   const stackSelectedThumbnailSize = 65;
+
+  // Stack strip: turn vertical wheel into horizontal scroll (horizontal input, ctrl+wheel zoom and
+  // non-overflowing strips keep the default behavior)
+  const wheelToHorizontalScroll: Attachment<HTMLElement> = (node) =>
+    on(
+      node,
+      'wheel',
+      (event) => {
+        if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX) || node.scrollWidth <= node.clientWidth) {
+          return;
+        }
+        event.preventDefault();
+        node.scrollLeft += event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
+      },
+      { passive: false },
+    );
 
   let previewStackedAsset: AssetResponseDto | undefined = $state();
   let stack: StackResponseDto | undefined = $state();
@@ -647,7 +665,10 @@
   {#if stack && withStacked && !assetViewerManager.isShowEditor && $slideshowState === SlideshowState.None}
     {@const stackedAssets = stack.assets}
     <div id="stack-slideshow" class="z-10 col-span-4 col-start-1 row-start-3 border-t border-white/10 bg-black">
-      <div class="horizontal-scrollbar flex w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden">
+      <div
+        {@attach wheelToHorizontalScroll}
+        class="horizontal-scrollbar flex w-full max-w-full flex-row flex-nowrap overflow-x-auto overflow-y-hidden"
+      >
         {#each stackedAssets as stackedAsset (stackedAsset.id)}
           <div
             class={['relative inline-block px-1 pb-2 transition-all']}
