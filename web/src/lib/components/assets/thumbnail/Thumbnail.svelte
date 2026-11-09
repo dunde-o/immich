@@ -1,4 +1,6 @@
 <script module lang="ts">
+  // 반응형이 필요 없는 모듈 단위 캐시라 일반 Map을 쓴다.
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
   const assetDescriptionCache = new Map<string, string | null>();
 </script>
 
@@ -268,7 +270,6 @@
   });
 
   $effect(() => {
-    asset.id;
     descriptionFetchId += 1;
     description = assetDescriptionCache.get(asset.id) ?? null;
   });
@@ -526,7 +527,7 @@
   <Portal target="body">
     <div
       class={[
-        'pointer-events-none fixed z-50 w-max max-w-[280px] rounded-xl bg-black/90 px-3.5 py-2.5 text-xs leading-relaxed text-white shadow-xl backdrop-blur-sm',
+        'pointer-events-none fixed z-50 w-max max-w-[280px] rounded-xl bg-black/90 px-3.5 py-2.5 text-xs/relaxed text-white shadow-xl backdrop-blur-sm',
         descriptionTooltipPlacement === 'above' ? '-translate-y-full' : '',
       ]}
       bind:this={descriptionTooltipElement}
@@ -536,7 +537,7 @@
       in:fade={{ duration: 300 }}
       out:fade={{ duration: 300 }}
     >
-      <p class="line-clamp-4 whitespace-pre-line break-words">{description}</p>
+      <p class="line-clamp-4 wrap-break-word whitespace-pre-line">{description}</p>
       <div
         class={[
           'description-tooltip-tail absolute size-3 rotate-45 bg-black/90',
